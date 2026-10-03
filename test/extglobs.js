@@ -362,6 +362,48 @@ describe('extglobs', () => {
     assert(isMatch('a/c/', 'a/!(b*)/**'));
   });
 
+  it('should match the parent directory when a globstar ends an extglob group', () => {
+    assert(isMatch('a', '@(a/**)'));
+    assert(isMatch('a/b', '@(a/**)'));
+    assert(isMatch('a/b/c', '@(a/**)'));
+    assert(!isMatch('b', '@(a/**)'));
+
+    assert(isMatch('a', '+(a/**)'));
+    assert(isMatch('a/b', '+(a/**)'));
+    assert(!isMatch('b', '+(a/**)'));
+
+    assert(isMatch('a', '*(a/**)'));
+    assert(isMatch('a/b', '*(a/**)'));
+    assert(!isMatch('aa', '*(a/**)'));
+
+    assert(isMatch('a', '?(a/**)'));
+    assert(isMatch('a/b', '?(a/**)'));
+
+    assert(isMatch('test/utils', 'test@(/utils/**)'));
+    assert(isMatch('test/utils/file', 'test@(/utils/**)'));
+    assert(!isMatch('test', 'test@(/utils/**)'));
+
+    assert(isMatch('test', 'test?(/utils/**)'));
+    assert(isMatch('test/utils', 'test?(/utils/**)'));
+    assert(isMatch('test/utils/a/b', 'test?(/utils/**)'));
+    assert(!isMatch('test/other', 'test?(/utils/**)'));
+
+    // dot restrictions still apply
+    assert(!isMatch('a/b/.c', '@(a/**)'));
+    assert(isMatch('a/b/.c', '@(a/**)', { dot: true }));
+  });
+
+  it('should not change negation extglob globstar semantics', () => {
+    // the inner pattern of a negate extglob is compiled as a negative
+    // lookahead, so it must not get the trailing-globstar `$` alternative
+    assert(isMatch('a', '!(a/**)'));
+    assert(!isMatch('a/', '!(a/**)'));
+    assert(!isMatch('a/b', '!(a/**)'));
+    assert(!isMatch('a/b/c', '!(a/**)'));
+    assert(isMatch('b', '!(a/**)'));
+    assert(isMatch('b/c', '!(a/**)'));
+  });
+
   it('should support *(...)', () => {
     assert(isMatch('a', 'a*(z)'));
     assert(isMatch('az', 'a*(z)'));

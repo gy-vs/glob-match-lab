@@ -2,7 +2,7 @@
 
 const assert = require('assert');
 const match = require('./support/match');
-const { isMatch } = require('..');
+const { isMatch, makeRe } = require('..');
 
 describe('stars', () => {
   describe('issue related', () => {
@@ -432,6 +432,64 @@ describe('stars', () => {
       assert(isMatch('a/bb.bb/cc/dd/ee/f/ggg.md', 'a/**/f/*.md'));
       assert(isMatch('a/bb/c/ddd.md', 'a/*/c/*.md'));
       assert(isMatch('a/bbbb/c/ddd.md', 'a/*/c/*.md'));
+    });
+
+    it('should match the parent directory when a globstar ends a parenthesized group', () => {
+      // a globstar at the end of a pattern matches the directory before the
+      // trailing slash; the same must hold when it ends a group.
+      assert(isMatch('a/b', 'a(/b/**)'));
+      assert(isMatch('a/b/', 'a(/b/**)'));
+      assert(isMatch('a/b/c', 'a(/b/**)'));
+      assert(isMatch('a/b/c/d', 'a(/b/**)'));
+      assert(!isMatch('a', 'a(/b/**)'));
+      assert(!isMatch('a/c', 'a(/b/**)'));
+
+      assert(isMatch('test/utils', 'test(/utils/**)'));
+      assert(isMatch('test/utils/file', 'test(/utils/**)'));
+      assert(isMatch('test/utils/a/b', 'test(/utils/**)'));
+      assert(!isMatch('test', 'test(/utils/**)'));
+      assert(!isMatch('test/other', 'test(/utils/**)'));
+      assert(!isMatch('test/other/file', 'test(/utils/**)'));
+
+      // optional groups additionally match without the grouped portion
+      assert(isMatch('test', 'test?(/utils/**)'));
+      assert(isMatch('test/utils', 'test?(/utils/**)'));
+      assert(isMatch('test/utils/file', 'test?(/utils/**)'));
+      assert(!isMatch('test/other', 'test?(/utils/**)'));
+
+      // nested groups
+      assert(isMatch('a', 'a?(/b(/c/**))'));
+      assert(isMatch('a/b/c', 'a?(/b(/c/**))'));
+      assert(isMatch('a/b/c/d', 'a?(/b(/c/**))'));
+      assert(!isMatch('a/b', 'a?(/b(/c/**))'));
+    });
+
+    it('should keep dot restrictions for globstars ending a parenthesized group', () => {
+      assert(!isMatch('a/b/.c', 'a(/b/**)'));
+      assert(!isMatch('a/b/.c/d', 'a(/b/**)'));
+      assert(isMatch('a/b/.c', 'a(/b/**)', { dot: true }));
+      assert(isMatch('a/b/.c/d', 'a(/b/**)', { dot: true }));
+      assert(!isMatch('test/utils/.hidden', 'test?(/utils/**)'));
+      assert(isMatch('test/utils/.hidden', 'test?(/utils/**)', { dot: true }));
+    });
+
+    it('should keep strictSlashes semantics for globstars ending a parenthesized group', () => {
+      assert(!isMatch('a/b', 'a(/b/**)', { strictSlashes: true }));
+      assert(isMatch('a/b/', 'a(/b/**)', { strictSlashes: true }));
+      assert(isMatch('a/b/c', 'a(/b/**)', { strictSlashes: true }));
+    });
+
+    it('should produce makeRe output consistent with isMatch', () => {
+      const re = makeRe('test(/utils/**)');
+      assert(re.test('test/utils'));
+      assert(re.test('test/utils/file'));
+      assert(!re.test('test'));
+      assert(!re.test('test/other'));
+
+      const optional = makeRe('test?(/utils/**)');
+      assert(optional.test('test'));
+      assert(optional.test('test/utils'));
+      assert(!optional.test('test/other'));
     });
   });
 });
