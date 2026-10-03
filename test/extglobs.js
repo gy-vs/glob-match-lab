@@ -362,6 +362,37 @@ describe('extglobs', () => {
     assert(isMatch('a/c/', 'a/!(b*)/**'));
   });
 
+  it('should match the directory itself when an extglob ends with a globstar', () => {
+    assert(isMatch('test', 'test?(/utils/**)'));
+    assert(isMatch('test/utils', 'test?(/utils/**)'));
+    assert(isMatch('test/utils/file', 'test?(/utils/**)'));
+    assert(isMatch('test/utils/a/b/c', 'test?(/utils/**)'));
+    assert(!isMatch('test/other', 'test?(/utils/**)'));
+
+    assert(!isMatch('test', 'test@(/utils/**)'));
+    assert(isMatch('test/utils', 'test@(/utils/**)'));
+    assert(isMatch('test/utils/file', 'test@(/utils/**)'));
+
+    assert(!isMatch('test', 'test+(/utils/**)'));
+    assert(isMatch('test/utils', 'test+(/utils/**)'));
+    assert(isMatch('test/utils/file', 'test+(/utils/**)'));
+
+    assert(isMatch('test', 'test*(/utils/**)'));
+    assert(isMatch('test/utils', 'test*(/utils/**)'));
+    assert(isMatch('test/utils/file', 'test*(/utils/**)'));
+
+    // the dot option still applies to segments starting with a dot
+    assert(!isMatch('test/utils/.hidden', 'test?(/utils/**)'));
+    assert(!isMatch('test/utils/.hidden/file', 'test?(/utils/**)'));
+    assert(isMatch('test/utils/.hidden', 'test?(/utils/**)', { dot: true }));
+    assert(isMatch('test/utils/.hidden/file', 'test?(/utils/**)', { dot: true }));
+
+    // makeRe and isMatch stay consistent
+    assert(makeRe('test?(/utils/**)').test('test'));
+    assert(makeRe('test?(/utils/**)').test('test/utils'));
+    assert(!makeRe('test?(/utils/**)').test('test/other'));
+  });
+
   it('should support *(...)', () => {
     assert(isMatch('a', 'a*(z)'));
     assert(isMatch('az', 'a*(z)'));

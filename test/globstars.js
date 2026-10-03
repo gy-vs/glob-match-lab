@@ -433,5 +433,33 @@ describe('stars', () => {
       assert(isMatch('a/bb/c/ddd.md', 'a/*/c/*.md'));
       assert(isMatch('a/bbbb/c/ddd.md', 'a/*/c/*.md'));
     });
+
+    it('should treat a globstar at the end of a group like one at the end of a pattern', () => {
+      // `test/utils/**` matches `test/utils` itself, so a group ending
+      // in `/**` must also match the directory preceding the globstar
+      assert(!isMatch('test', 'test(/utils/**)'));
+      assert(isMatch('test/utils', 'test(/utils/**)'));
+      assert(isMatch('test/utils/', 'test(/utils/**)'));
+      assert(isMatch('test/utils/file', 'test(/utils/**)'));
+      assert(isMatch('test/utils/a/b/c', 'test(/utils/**)'));
+      assert(!isMatch('test/other', 'test(/utils/**)'));
+      assert(!isMatch('test/utils2', 'test(/utils/**)'));
+      assert(!isMatch('test/utils2/file', 'test(/utils/**)'));
+
+      // nested groups
+      assert(!isMatch('aa', 'a(a(/b/**))'));
+      assert(isMatch('aa/b', 'a(a(/b/**))'));
+      assert(isMatch('aa/b/c/d', 'a(a(/b/**))'));
+
+      // the dot option still applies to segments starting with a dot
+      assert(!isMatch('test/utils/.hidden', 'test(/utils/**)'));
+      assert(!isMatch('test/utils/.hidden/file', 'test(/utils/**)'));
+      assert(isMatch('test/utils/.hidden', 'test(/utils/**)', { dot: true }));
+      assert(isMatch('test/utils/.hidden/file', 'test(/utils/**)', { dot: true }));
+
+      // groups that are not at the end of the pattern are unaffected
+      assert(!isMatch('a/x', 'a(/x/**)/y'));
+      assert(isMatch('a/x/z/y', 'a(/x/**)/y'));
+    });
   });
 });
